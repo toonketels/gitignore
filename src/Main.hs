@@ -4,7 +4,9 @@ import System.FilePath
 import System.Directory
 import Control.Monad
 import System.IO.Error
+import Data.List ((\\))
 
+type Rule = String
 
 templatesDir :: FilePath
 templatesDir =  ".gitignore"
@@ -35,7 +37,7 @@ getFullPathTemplates :: FilePath -> [FilePath] -> [FilePath]
 getFullPathTemplates home = map (getFullPathTemplate home)
 
 
-getTemplatesContent :: [FilePath] -> IO (Either String [String])
+getTemplatesContent :: [FilePath] -> IO (Either String [Rule])
 getTemplatesContent paths = do
     result <- tryIOError (forM paths readFile)
     case result of
@@ -43,14 +45,18 @@ getTemplatesContent paths = do
         Right contents -> return $ Right $ lines $ foldr (++) "" contents
 
 
-getGitignoreFileContents :: IO (Either String [String])
+getGitignoreFileContents :: IO (Either String [Rule])
 getGitignoreFileContents = do
     result <- tryIOError (readFile gitignoreFile)
     case result of
-        Left e        -> if isDoesNotExistError e
+        Left e        -> if   isDoesNotExistError e
                          then return $ Right []
                          else return $ Left "Problem loading .gitignore"
         Right content -> return $ Right $ lines content
+
+
+rulesToAdd :: [Rule] -> [Rule] -> [Rule]
+rulesToAdd existing new = new \\ existing
 
 
 main :: IO ()
@@ -63,13 +69,13 @@ main = do
             result <- getTemplatesContent $ getFullPathTemplates home files
             case result of
                 Left e         -> putStrLn e
-                Right contents -> do
-                    forM_ contents putStrLn
-                    result <- getGitignoreFileContents
-                    case result of
-                        Left e        -> putStrLn e
-                        Right content -> do
-                            forM_ content putStrLn
+                Right allRules -> do
+                    result' <- getGitignoreFileContents
+                    case result' of
+                        Left e              -> putStrLn e
+                        Right existingRules -> do
+                            forM_ toAdd putStrLn
+                                where toAdd = rulesToAdd existingRules allRules
 
 
     return ()
