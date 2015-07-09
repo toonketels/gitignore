@@ -90,7 +90,7 @@ main = do
     allRules  <- case templates of
                     Left e      -> return $ Left e
                     Right files -> getTemplatesContent $ getFullPathTemplates home files
-    let toAdd =  liftM2 rulesToAdd existing allRules
+    toAdd     <- return $ liftM2 rulesToAdd existing allRules
     added     <- case toAdd of
                     Left e      -> return $ Left e
                     Right rules -> addRules rules
