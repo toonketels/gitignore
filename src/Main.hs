@@ -10,6 +10,29 @@ import System.IO.Error    (tryIOError, isDoesNotExistError)
 import System.IO.Strict   (readFile)   -- Needed because we read and write to the same file
                                        -- which is "not?" possible lazily
 
+
+main :: IO ()
+main = do
+    args      <- getArgs
+    home      <- getHomeDirectory
+    existing  <- getGitignoreFileContents
+    templates <- listAvailableTemplates
+    chosen    <- return $ join (liftM (listChosenTemplates args) templates)
+    allRules  <- case chosen of
+                    Left e      -> return $ Left e
+                    Right files -> getTemplatesContent $ getFullPathTemplates home files
+    toAdd     <- return $ liftM2 rulesToAdd existing allRules
+    added     <- case toAdd of
+                    Left e      -> return $ Left e
+                    Right rules -> addRules rules
+    putStrLn $ formatMessage $ getMessage added toAdd
+        where
+            getMessage added' toAdd' = case added' of
+                Left e  -> Left e
+                Right _ -> liftM getSummary toAdd'
+
+
+
 type Rule = String
 
 templatesDir :: FilePath
@@ -96,22 +119,3 @@ formatMessage (Right m) = "Success: " ++ m
 
 
 
-main :: IO ()
-main = do
-    args      <- getArgs
-    home      <- getHomeDirectory
-    existing  <- getGitignoreFileContents
-    templates <- listAvailableTemplates
-    chosen    <- return $ join (liftM (listChosenTemplates args) templates)
-    allRules  <- case chosen of
-                    Left e      -> return $ Left e
-                    Right files -> getTemplatesContent $ getFullPathTemplates home files
-    toAdd     <- return $ liftM2 rulesToAdd existing allRules
-    added     <- case toAdd of
-                    Left e      -> return $ Left e
-                    Right rules -> addRules rules
-    putStrLn $ formatMessage $ getMessage added toAdd
-        where
-            getMessage added' toAdd' = case added' of
-                Left e  -> Left e
-                Right _ -> liftM getSummary toAdd'
