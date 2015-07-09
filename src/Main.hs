@@ -9,6 +9,9 @@ import System.IO.Error
 templatesDir :: FilePath
 templatesDir =  ".gitignore"
 
+gitignoreFile :: FilePath
+gitignoreFile = ".gitignore"
+
 extension    :: String
 extension    =  "gitignore"
 
@@ -40,6 +43,16 @@ getTemplatesContent paths = do
         Right contents -> return $ Right $ lines $ foldr (++) "" contents
 
 
+getGitignoreFileContents :: IO (Either String [String])
+getGitignoreFileContents = do
+    result <- tryIOError (readFile gitignoreFile)
+    case result of
+        Left e        -> if isDoesNotExistError e
+                         then return $ Right []
+                         else return $ Left "Problem loading .gitignore"
+        Right content -> return $ Right $ lines content
+
+
 main :: IO ()
 main = do
     home      <- getHomeDirectory
@@ -50,5 +63,13 @@ main = do
             result <- getTemplatesContent $ getFullPathTemplates home files
             case result of
                 Left e         -> putStrLn e
-                Right contents -> forM_ contents putStrLn
+                Right contents -> do
+                    forM_ contents putStrLn
+                    result <- getGitignoreFileContents
+                    case result of
+                        Left e        -> putStrLn e
+                        Right content -> do
+                            forM_ content putStrLn
+
+
     return ()
