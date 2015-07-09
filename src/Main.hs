@@ -5,6 +5,7 @@ import System.Directory
 import Control.Monad
 import System.IO.Error
 
+
 templatesDir :: FilePath
 templatesDir =  ".gitignore"
 
@@ -31,13 +32,23 @@ getFullPathTemplates :: FilePath -> [FilePath] -> [FilePath]
 getFullPathTemplates home = map (getFullPathTemplate home)
 
 
+getTemplatesContent :: [FilePath] -> IO (Either String [String])
+getTemplatesContent paths = do
+    result <- tryIOError (forM paths readFile)
+    case result of
+        Left _         -> return $ Left "Problem loading templates"
+        Right contents -> return $ Right $ lines $ foldr (++) "" contents
+
+
 main :: IO ()
 main = do
     home      <- getHomeDirectory
     templates <- listAvailableTemplates
     case templates of
         Left e      -> putStrLn e
-        Right files ->
-            forM_ files' putStrLn
-                where files' = getFullPathTemplates home files
+        Right files -> do
+            result <- getTemplatesContent $ getFullPathTemplates home files
+            case result of
+                Left e         -> putStrLn e
+                Right contents -> forM_ contents putStrLn
     return ()
