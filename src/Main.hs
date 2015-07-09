@@ -80,21 +80,17 @@ main :: IO ()
 main = do
     home      <- getHomeDirectory
     templates <- listAvailableTemplates
-    case templates of
-        Left e      -> putStrLn e
-        Right files -> do
-            result <- getTemplatesContent $ getFullPathTemplates home files
-            case result of
-                Left e         -> putStrLn e
-                Right allRules -> do
-                    result' <- getGitignoreFileContents
-                    case result' of
-                        Left e              -> putStrLn e
-                        Right existingRules -> do
-                            -- forM_ toAdd putStrLn
-                             let toAdd = rulesToAdd existingRules allRules
-                             result'' <- addRules toAdd
-                             case result'' of
-                                Left e    -> putStrLn e
-                                Right _   -> putStrLn $ getSummary toAdd
-    return ()
+    allRules  <- case templates of
+                    Left e      -> return $ Left e
+                    Right files -> getTemplatesContent $ getFullPathTemplates home files
+    existing  <- getGitignoreFileContents
+    let toAdd =  liftM2 rulesToAdd existing allRules
+    added     <- case toAdd of
+                    Left e      -> return $ Left e
+                    Right rules -> addRules rules
+    showMessage $ getMessage added toAdd
+        where
+            getMessage added' toAdd' = case added' of
+                Left e  -> Left e
+                Right _ -> liftM getSummary toAdd'
+            showMessage m = either putStrLn putStrLn m
