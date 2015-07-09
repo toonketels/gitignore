@@ -1,14 +1,14 @@
 module Main where
 
-import Prelude hiding (readFile)
-import System.FilePath
-import System.Directory
-import Control.Monad
-import System.IO.Error
-import Data.List (partition, (\\))
-import System.IO.Strict (readFile)   -- Needed because we read and write to the same file
-                                     -- which is not possible lazily
+import Prelude hiding     (readFile)
+import Data.List          (partition, (\\))
+import Control.Monad      (forM, liftM, liftM2, join)
+import System.FilePath    (addExtension, takeExtension, dropExtension, (</>))
+import System.Directory   (getHomeDirectory, getDirectoryContents)
 import System.Environment (getArgs)
+import System.IO.Error    (tryIOError, isDoesNotExistError)
+import System.IO.Strict   (readFile)   -- Needed because we read and write to the same file
+                                       -- which is "not?" possible lazily
 
 type Rule = String
 
@@ -16,10 +16,10 @@ templatesDir :: FilePath
 templatesDir =  ".gitignore"
 
 gitignoreFile :: FilePath
-gitignoreFile = ".gitignore"
+gitignoreFile =  ".gitignore"
 
-extension    :: String
-extension    =  "gitignore"
+extension :: String
+extension =  "gitignore"
 
 
 listChosenTemplates :: [String] -> [FilePath] -> Either String [FilePath]
