@@ -90,12 +90,9 @@ getSummary rules = if   null rules
                    else "Added " ++ (show $ length rules) ++ " rules to the .gitignore file"
 
 
-showMessage :: (Either String String) -> IO ()
-showMessage = either showError showSuccess
-    where showError   m = putStrLn $ "Error: " ++ m
-          showSuccess m = putStrLn $ "Success: " ++ m
-
-
+formatMessage :: (Either String String) -> String
+formatMessage (Left  m) = "Error: "   ++ m
+formatMessage (Right m) = "Success: " ++ m
 
 
 
@@ -113,7 +110,7 @@ main = do
     added     <- case toAdd of
                     Left e      -> return $ Left e
                     Right rules -> addRules rules
-    showMessage $ getMessage added toAdd
+    putStrLn $ formatMessage $ getMessage added toAdd
         where
             getMessage added' toAdd' = case added' of
                 Left e  -> Left e
