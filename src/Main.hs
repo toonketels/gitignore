@@ -22,20 +22,17 @@ extension    :: String
 extension    =  "gitignore"
 
 
-listChosenTemplates :: [String] -> IO (Either String [FilePath])
-listChosenTemplates []    = return $ Left "No template names provided to add to the gitignore file"
-listChosenTemplates names = do
-    result <- listAvailableTemplates
-    case result of
-        Left e      -> return $ Left e
-        Right files -> if   someTemplatesMissing
-                       then return $ Left  ("Templates missing for " ++ unwords missing)
-                       else return $ Right (addExtensions present)
+listChosenTemplates :: [String] -> [FilePath] -> Either String [FilePath]
+listChosenTemplates [] _            = Left "No template names provided"
+listChosenTemplates names templates =
+    if   someTemplatesMissing
+    then Left  ("Templates missing for " ++ unwords missing)
+    else Right (addExtensions present)
             where namesOnly              = fmap dropExtension
                   addExtensions          = fmap (flip addExtension extension)
                   someTemplatesMissing   = not (null missing)
                   group desired existing = partition (flip elem existing) desired
-                  (present, missing)     = group names (namesOnly files)
+                  (present, missing)     = group names (namesOnly templates)
 
 
 listAvailableTemplates :: IO (Either String [FilePath])
@@ -107,8 +104,9 @@ main = do
     args      <- getArgs
     home      <- getHomeDirectory
     existing  <- getGitignoreFileContents
-    templates <- listChosenTemplates args
-    allRules  <- case templates of
+    templates <- listAvailableTemplates
+    chosen    <- return $ join (liftM (listChosenTemplates args) templates)
+    allRules  <- case chosen of
                     Left e      -> return $ Left e
                     Right files -> getTemplatesContent $ getFullPathTemplates home files
     toAdd     <- return $ liftM2 rulesToAdd existing allRules
