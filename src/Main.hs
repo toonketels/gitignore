@@ -76,14 +76,20 @@ getSummary rules = if   null rules
                    else "Added " ++ (show $ length rules) ++ " rules to the .gitignore file"
 
 
+showMessage :: (Either String String) -> IO ()
+showMessage = either showError showSuccess
+    where showError   m = putStrLn $ "Error: " ++ m
+          showSuccess m = putStrLn $ "Success: " ++ m
+
+
 main :: IO ()
 main = do
     home      <- getHomeDirectory
+    existing  <- getGitignoreFileContents
     templates <- listAvailableTemplates
     allRules  <- case templates of
                     Left e      -> return $ Left e
                     Right files -> getTemplatesContent $ getFullPathTemplates home files
-    existing  <- getGitignoreFileContents
     let toAdd =  liftM2 rulesToAdd existing allRules
     added     <- case toAdd of
                     Left e      -> return $ Left e
@@ -93,4 +99,3 @@ main = do
             getMessage added' toAdd' = case added' of
                 Left e  -> Left e
                 Right _ -> liftM getSummary toAdd'
-            showMessage m = either putStrLn putStrLn m
