@@ -5,9 +5,10 @@ import System.FilePath
 import System.Directory
 import Control.Monad
 import System.IO.Error
-import Data.List ((\\))
+import Data.List (partition, (\\))
 import System.IO.Strict (readFile)   -- Needed because we read and write to the same file
                                      -- which is not possible lazily
+import System.Environment (getArgs)
 
 type Rule = String
 
@@ -19,6 +20,22 @@ gitignoreFile = ".gitignore"
 
 extension    :: String
 extension    =  "gitignore"
+
+
+listChosenTemplates :: [String] -> IO (Either String [FilePath])
+listChosenTemplates []    = return $ Left "No template names provided to add to the gitignore file"
+listChosenTemplates names = do
+    result <- listAvailableTemplates
+    case result of
+        Left e      -> return $ Left e
+        Right files -> if   someTemplatesMissing
+                       then return $ Left  ("Templates missing for " ++ unwords missing)
+                       else return $ Right (addExtensions present)
+            where namesOnly              = fmap dropExtension
+                  addExtensions          = fmap (flip addExtension extension)
+                  someTemplatesMissing   = not (null missing)
+                  group desired existing = partition (flip elem existing) desired
+                  (present, missing)     = group names (namesOnly files)
 
 
 listAvailableTemplates :: IO (Either String [FilePath])
@@ -82,11 +99,15 @@ showMessage = either showError showSuccess
           showSuccess m = putStrLn $ "Success: " ++ m
 
 
+
+
+
 main :: IO ()
 main = do
+    args      <- getArgs
     home      <- getHomeDirectory
     existing  <- getGitignoreFileContents
-    templates <- listAvailableTemplates
+    templates <- listChosenTemplates args
     allRules  <- case templates of
                     Left e      -> return $ Left e
                     Right files -> getTemplatesContent $ getFullPathTemplates home files
