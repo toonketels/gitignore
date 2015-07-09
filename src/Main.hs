@@ -1,10 +1,13 @@
 module Main where
 
+import Prelude hiding (readFile)
 import System.FilePath
 import System.Directory
 import Control.Monad
 import System.IO.Error
 import Data.List ((\\))
+import System.IO.Strict (readFile)   -- Needed because we read and write to the same file
+                                     -- which is not possible lazily
 
 type Rule = String
 
@@ -59,6 +62,20 @@ rulesToAdd :: [Rule] -> [Rule] -> [Rule]
 rulesToAdd existing new = new \\ existing
 
 
+addRules :: [Rule] -> IO (Either String ())
+addRules toAdd = do
+    result <- tryIOError (appendFile gitignoreFile $ unlines toAdd)
+    case result of
+        Left _  -> return $ Left "Problem writing to .gitignore file"
+        Right _ -> return $ Right ()
+
+
+getSummary :: [Rule] -> String
+getSummary rules = if   null rules
+                   then "Nothing to add to the .gitignore file"
+                   else "Added " ++ (show $ length rules) ++ " rules to the .gitignore file"
+
+
 main :: IO ()
 main = do
     home      <- getHomeDirectory
@@ -74,8 +91,10 @@ main = do
                     case result' of
                         Left e              -> putStrLn e
                         Right existingRules -> do
-                            forM_ toAdd putStrLn
-                                where toAdd = rulesToAdd existingRules allRules
-
-
+                            -- forM_ toAdd putStrLn
+                             let toAdd = rulesToAdd existingRules allRules
+                             result'' <- addRules toAdd
+                             case result'' of
+                                Left e    -> putStrLn e
+                                Right _   -> putStrLn $ getSummary toAdd
     return ()
